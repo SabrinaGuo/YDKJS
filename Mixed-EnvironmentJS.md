@@ -237,11 +237,3 @@ addAll.apply(null, nums); // 应该是：499950000
 https://www.kancloud.cn/kancloud/you-dont-know-js-types-grammar/516742
 
 https://yakimhsu.com/javascript/JS_Daquan-04.html
-
----
-
-- hh
-- kkk
-
-```js
-```
