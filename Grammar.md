@@ -2,7 +2,7 @@
 
 你或許認為你知道如何撰寫 JS 程式碼，但該語言文法的各個部分都有非常多需要留意的微妙之處，可能會導致混淆或誤解，所以我們要探討並把事情釐清。
 
-**文法式描述其語法(運算子、關鍵字等)如何結合在一起，形成格式正確的有效程式的一種結構化方式**
+**文法是描述其語法(運算子、關鍵字等)如何結合在一起，形成格式正確的有效程式的一種結構化方式**
 
 ## 述句與運算式
 
@@ -691,6 +691,50 @@ do {
 
 ## 錯誤
 
+JS 不僅是具有不同的錯誤子型別(TypeError、ReferenceError、SyntaxError 等等)其文法有定義了幾個編譯時期的錯誤，相對於在執行時期發生的其他所有錯誤。
+長久以來存在著數個特定的情況，它們應該被捕捉並回報為「早期錯誤」。一個語法錯誤就是一種早期錯誤(例如 a = , )，其文法也定義了一些語法上有效但儘管如此還是不被允許的東西。
+
+既然你的程式碼尚未開始執行，這些錯誤無法以 try ... catch 來捕抓，而是單純使你程式碼剖析或編譯過程失敗。
+
+以下範例：
+
+```js
+var a = /+foo/; // Uncaught SyntaxError: Invalid regular expression: /+foo/: Nothing to repeat
+
+//正規表達式字面值內的語法。這裡的 JS 語法沒有任何錯誤，
+//不過那個無效的 regex 會擲出一個早期錯誤。
+```
+
+```js
+var a;
+42 = a;		// Uncaught ReferenceError: Invalid left-hand side in assignment
+
+//指定式的目標必須是一個識別字
+//或是會產生一或多個識別字的 ES6 解構運算式，
+//所以像是42這樣的值放在那裏是不合法的!
+```
+
+```js
+function foo(a,b,a) { }		// 沒關係
+
+function bar(a,b,a) { "use strict"; }	// 錯誤！
+
+//ES5 的 strict 模式定義了更多的早期錯誤。像在strict 模式中，函式參數的名稱不可以重複。
+```
+
+```js
+(function() {
+  "use strict";
+
+  var a = {
+    b: 42,
+    b: 43
+  }; // 錯誤
+})();
+
+//strict 模式物件字面值不可以帶有多個名稱相同的特性
+```
+
 ### 過早使用變數
 
 暫時死亡區域（Temporal Dead Zone，TDZ）
@@ -701,6 +745,9 @@ ES6 定義了「暫時死亡區域」（Temporal Dead Zone，TDZ），意思是�
   a = 2; // ReferenceError!
   let a;
 }
+
+// 指定式 a = 2 在 a 變數藉由 let a 宣告初始化之前就存取(參考)了它，
+//所以位於 a 的TDZ中並擲出一個錯誤
 ```
 
 之前提到 typeof 對於尚未宣告的變數可有保護機制，但在這裡是無效的。
@@ -715,9 +762,76 @@ ES6 定義了「暫時死亡區域」（Temporal Dead Zone，TDZ），意思是�
 
 ## 函式引數
 
+違反 TDZ 的另一個例子預設參數值可以在 ES6 發展中提到。
+
 ### try...finally
 
-try 區塊的內容 vs finally 區塊的內容，到底是誰會先執行？誰會後執行？
+或許 try...catch 大家都相當熟悉，但是否有想過與之配合的 finally 呢?雖然必要時兩者都可以出現，但其實 try 只需要搭配兩者其一唷!
+
+finally 子句中的程式碼一定會執行，而他永遠都會在 try(與 catch)完成後，在任何其他程式碼執行之前，即刻執行。
+
+那如果一個 try 子句內有一個 return 述句會發生什麼事?顯然會回傳一個值，但接受該值的出較端程式碼是在 finally 之前還是之後執行呢?
+
+```js
+function foo() {
+  try {
+    return 42;
+  } finally {
+    console.log("Hello");
+  }
+
+  console.log("never runs");
+}
+
+console.log(foo());
+// Hello
+// 42
+```
+
+1. return 42 會馬上執行，設定 foo()呼叫的完成值。(此時完成 try 子句)
+
+2. finally 子句會即刻緊接著執行。(foo()函式此時才算完成)
+
+3. 它的完成值才會傳回給最後那個 console.log(...) 述句使用。
+
+try 子句中的 throw 也會有完全相同的行為:
+
+```js
+function foo() {
+  try {
+    throw 42;
+  } finally {
+    console.log("Hello");
+  }
+
+  console.log("never runs");
+}
+
+console.log(foo());
+// Hello
+// Uncaught Exception: 42
+```
+
+若 finally 子句內被擲出，它就會成為該函式主要的完成值，前面如果有 return 為該函式設定了完成值，則會被丟棄不用。
+
+```js
+function foo() {
+  try {
+    return 42;
+  } finally {
+    throw "Oops!";
+  }
+
+  console.log("never runs");
+}
+
+console.log(foo());
+// Uncaught Exception: Oops!
+
+//在 finally 中若有return則會覆寫上面的42
+```
+
+<!-- try 區塊的內容 vs finally 區塊的內容，到底是誰會先執行？誰會後執行？
 
 先來看第一個例子。
 
@@ -752,7 +866,7 @@ console.log(foo());
 //12345
 ```
 
-從執行順序來看，的確是先執行 try 區塊，再來才是 finally 區塊，但「述句完成值」會決定結果的「顯示」順序。首先，會先執行區塊的內容，像是 console.log(..)，再來才是執行函式 foo() 回傳完成值。因此，在第一個例子中，會先顯示「Hello World」，再顯示「12345」。而在第二個例子中，的確也是先執行執行區塊的內容 console.log(..)，但由於 finally 若有 return 值，則會覆寫 try 內的回傳值，而成為這個函式最後的完成值，因此得到 12345。
+從執行順序來看，的確是先執行 try 區塊，再來才是 finally 區塊，但「述句完成值」會決定結果的「顯示」順序。首先，會先執行區塊的內容，像是 console.log(..)，再來才是執行函式 foo() 回傳完成值。因此，在第一個例子中，會先顯示「Hello World」，再顯示「12345」。而在第二個例子中，的確也是先執行執行區塊的內容 console.log(..)，但由於 finally 若有 return 值，則會覆寫 try 內的回傳值，而成為這個函式最後的完成值，因此得到 12345。 -->
 
 ### switch
 
@@ -825,3 +939,7 @@ switch (true) {
 ```
 
 最後，default 不一定要放在最後，順序是什麼並不重要喔！
+
+https://www.kancloud.cn/kancloud/you-dont-know-js-types-grammar/516741
+
+https://cythilya.github.io/2018/10/16/grammar/
