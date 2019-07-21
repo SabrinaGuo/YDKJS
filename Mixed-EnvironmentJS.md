@@ -233,7 +233,3 @@ addAll.apply(null, nums); // 应该是：499950000
 - 變量名稱允許的最大長度
 
   遭遇這些限制不是非常常見，但你應當知道這些限制存在並確實會發生，而且重要的是它們因引擎不同而不同。
-
-https://www.kancloud.cn/kancloud/you-dont-know-js-types-grammar/516742
-
-https://yakimhsu.com/javascript/JS_Daquan-04.html
